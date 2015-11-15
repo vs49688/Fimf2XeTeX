@@ -7,22 +7,34 @@ FIMF_API="https://www.fimfiction.net/api/story.php?story={0}"
 FIMF_CHAPTERDL="https://www.fimfiction.net/download_chapter.php?chapter={0}"
 USER_AGENT="Mozilla/5.0"
 
-TEX_PREAMBLE=\
-"""\\documentclass[a4paper,12pt,oneside]{book}
+TEX_PREAMBLE_1=\
+"""\\documentclass[a4paper,10pt]{memoir}
 \\usepackage[USenglish]{babel}
-\\usepackage[top=1in, bottom=1in, left=1in, right=1in]{geometry}
 
 \\usepackage[T1]{fontenc}
 \\usepackage[ansinew,utf8]{inputenc}
 \\usepackage{lmodern}
 
-\\usepackage{titletoc}
+% Many keks
+\\chapterstyle{dash}
 
 % Account for > 100 chapters and add ............ in the TOC
-\\titlecontents{chapter}[1.5em]{\\addvspace{1pc}\\bfseries}{\contentslabel{2em}}{}
-    {\\titlerule*[0.3pc]{.}\contentspage}
-
+\\renewcommand*{\\cftchapterdotsep}{\\cftdotsep}
+\\cftsetindents{chapter}{1em}{3em}
 """
+
+TEX_PREAMBLE_2=\
+"""\\makeevenhead{headings}{\\thepage}{\\scshape\\fimfAuthor}{}
+\\makeoddhead{headings}{}{\\scshape\\fimfTitle}{\\thepage}
+
+\\makeevenfoot{plain}{}{}{}
+\\makeoddfoot{plain}{}{}{}
+
+\\title{\\fimfTitle}
+\\author{\\fimfAuthor}
+\\date{}
+"""
+
 
 def main():
 
@@ -51,16 +63,24 @@ def write_latex(story, chapterIncludes):
 
     fileName = "{0}.tex".format(safeTitle)
     with open(fileName, "wb") as f:
-        f.write(TEX_PREAMBLE)
+        f.write(TEX_PREAMBLE_1)
+        f.write("\n")
 
         f.write("\\newcommand{{\\fimfTitle}}{{{0}}}\n".format(story["title"]))
         f.write("\\newcommand{{\\fimfAuthor}}{{{0}}}\n".format(story["author"]["name"]))
         f.write("\\newcommand{{\\fimfUrl}}{{{0}}}\n".format(story["url"]))
+        f.write("\n")
+
+        f.write(TEX_PREAMBLE_2)
+        f.write("\n")
 
         f.write("\n\\begin{document}\n\n")
 
+        f.write("\t\\maketitle\n")
+        f.write("\t\\clearpage\n\n")
+
+        f.write("\t\\tableofcontents*\n")
         f.write("\t\\clearpage\n")
-        f.write("\t\\tableofcontents\n")
 
         for chap in chapterIncludes:
             f.write("\t\\include{{{0}}}\n".format(chap))
@@ -96,7 +116,7 @@ def write_chapter(num, chapter):
                 if(prevLine == ""):
                     continue
 
-                line = "\\\\\n"
+                line = "\n"
                 kek = 1
 
             line = tex_escape(line)
