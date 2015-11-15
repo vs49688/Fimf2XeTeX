@@ -59,8 +59,11 @@ def write_latex(story, chapterIncludes):
 
         f.write("\n\\begin{document}\n\n")
 
+        f.write("\t\\clearpage\n")
+        f.write("\t\\tableofcontents\n")
+
         for chap in chapterIncludes:
-            f.write("\\include{{{0}}}\n".format(chap))
+            f.write("\t\\include{{{0}}}\n".format(chap))
 
         f.write("\n\\end{document}\n")
 
