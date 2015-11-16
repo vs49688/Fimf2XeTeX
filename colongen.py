@@ -8,7 +8,8 @@ FIMF_CHAPTERDL="https://www.fimfiction.net/download_chapter.php?chapter={0}"
 USER_AGENT="Mozilla/5.0"
 
 TEX_PREAMBLE_1=\
-"""\\documentclass[a4paper,10pt]{memoir}
+"""\\documentclass[a4paper,12pt]{memoir}
+\\usepackage[top=1in, bottom=1in, left=1in, right=1in]{geometry}
 \\usepackage[USenglish]{babel}
 
 \\usepackage[T1]{fontenc}
@@ -90,7 +91,7 @@ def write_latex(story, chapterIncludes):
     return fileName
 
 def tex_escape(line):
-    return line.replace("&", "\\&").replace("_", "\_")
+    return line.replace("&", "\\&").replace("_", "\_").replace("#", "\\#")
 
 def write_chapter(num, chapter):
     safeTitle=re.sub("[^0-9a-zA-Z]+", "_", chapter["title"].lower())
