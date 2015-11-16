@@ -1,10 +1,12 @@
 #!/usr/bin/env python
-import urllib2, json, re, sys
+import urllib2, json, re, sys, HTMLParser
 
 STORY_ID=25966
 
 FIMF_API="https://www.fimfiction.net/api/story.php?story={0}"
 FIMF_CHAPTERDL="https://www.fimfiction.net/download_chapter.php?chapter={0}"
+FIMF_CHAPTERDL_HTML="https://www.fimfiction.net/download_chapter.php?chapter={0}&html"
+
 USER_AGENT="Mozilla/5.0"
 
 TEX_PREAMBLE_1=\
@@ -51,13 +53,115 @@ def main():
         chap = chapters[i]
 
         sys.stdout.write("  Chapter {0}: {1}...".format(i+1, chap["title"]))
-        fileName=write_chapter(i+1, chap)
+        fileName=write_chapter_html(i+1, chap)
         sys.stdout.write("{0}\n".format(fileName))
 
         chapterIncludes.append(fileName)
 
     fileName = write_latex(story, chapterIncludes)
     print "Output written to {0}".format(fileName)
+
+
+class FimFictionHTMLParser(HTMLParser.HTMLParser):
+
+    def __init__(self, f):
+        HTMLParser.HTMLParser.__init__(self)
+        self.f = f
+
+        # 0 = Started
+        # 1 = Found initial <hr/>
+        # 2 = Found <a> bookmark
+        # 3 = Found title <h3>
+        # 4 = Found closing body
+
+        self.startState = 0
+
+        self.bold = False
+        self.italics = False
+
+    def handle_starttag(self, tag, attrs):
+        if self.startState != 3:
+            return
+
+        if tag in ["b", "strong"]:
+            self.bold = True
+        elif tag in ["i", "em"]:
+            self.italics = True
+        elif tag in ["p"]:
+            self.f.write("\n\n")
+
+        #print "==> {0}".format(tag)
+
+
+    def handle_endtag(self, tag):
+        if(self.startState == 0):
+            if tag == "hr":
+                self.startState = 1
+        elif self.startState == 1:
+            if tag == "a":
+                self.startState = 2
+            else:
+                raise Exception("Invalid HTML Format")
+        elif self.startState == 2:
+            if tag == "h3":
+                self.startState = 3
+            else:
+                raise Exception("Invalid HTML Format")
+
+        elif self.startState == 3:
+            if tag == "body":
+                self.startState = 4
+            else:
+
+                if tag in ["b", "strong"]:
+                    self.bold = False
+                elif tag in ["i", "em"]:
+                    self.italics = False
+
+                #print "<== {0}".format(tag)
+        elif self.startState == 4:
+            pass
+
+
+    def handle_data(self, data):
+        if self.startState != 3:
+            return
+
+        if self.bold:
+            self.f.write("\\textbf{")
+
+        if self.italics:
+            self.f.write("\\textit{")
+
+        self.f.write(tex_escape(data))
+
+        if self.italics:
+            self.f.write("}")
+
+        if self.bold:
+            self.f.write("}")
+
+        #print data
+
+
+def write_chapter_html(num, chapter):
+    safeTitle=re.sub("[^0-9a-zA-Z]+", "_", chapter["title"].lower())
+    fileName = "{0:03d}-{1}.tex".format(num, safeTitle)
+
+    chapter_url=FIMF_CHAPTERDL_HTML.format(chapter["id"])
+
+    #print chapter_url
+    chapterHtml = urllib2.urlopen(urllib2.Request(chapter_url, headers={"User-Agent": USER_AGENT})).read()
+
+
+    with open(fileName, "wb") as f:
+
+        f.write("\\chapter{{{0}}}\n\n".format(tex_escape(chapter["title"])))
+
+        parser = FimFictionHTMLParser(f)
+        parser.feed(chapterHtml)
+
+    return fileName[:-4]
 
 def write_latex(story, chapterIncludes):
     safeTitle=re.sub("[^0-9a-zA-Z]+", "_", story["title"].lower())
@@ -91,9 +195,9 @@ def write_latex(story, chapterIncludes):
     return fileName
 
 def tex_escape(line):
-    return line.replace("&", "\\&").replace("_", "\_").replace("#", "\\#")
+    return line.replace("&", "\\&").replace("_", "\_").replace("#", "\\#").replace("$", "\\$").replace("%", "\\%")
 
-def write_chapter(num, chapter):
+def write_chapter_txt(num, chapter):
     safeTitle=re.sub("[^0-9a-zA-Z]+", "_", chapter["title"].lower())
     fileName = "{0:03d}-{1}.tex".format(num, safeTitle)
 
