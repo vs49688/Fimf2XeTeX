@@ -147,7 +147,7 @@ def write_latex(story, chapter_includes):
 
 def tex_escape(line):
     # For the love of all things holy, do the \\ excape first...
-    line = line.replace("\\", "textbackslash")
+    line = line.replace("\\", "\\textbackslash")
     line = line.replace("&", "\\&")
     line = line.replace("_", "\_")
     line = line.replace("#", "\\#")
