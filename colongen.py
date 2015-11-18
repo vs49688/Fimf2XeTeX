@@ -1,8 +1,13 @@
 #!/usr/bin/env python
-import urllib2, json, re, sys, os, inspect
+import urllib2
+import json
+import re
+import sys
+import os
+import inspect
+import codecs
 
-from sys import stderr as stderr
-from sys import stdout as stdout
+from sys import stderr as stderr, stdout as stdout
 
 # realpath() will make your script run, even if you symlink it :)
 cmd_folder = os.path.realpath(os.path.abspath(os.path.split(inspect.getfile(inspect.currentframe()))[0]))
@@ -14,11 +19,6 @@ cmd_subfolder = os.path.realpath(
     os.path.abspath(os.path.join(os.path.split(inspect.getfile(inspect.currentframe()))[0], "libs")))
 if cmd_subfolder not in sys.path:
     sys.path.insert(0, cmd_subfolder)
-
-import codecs
-
-from libs.bs4 import BeautifulSoup as BeautifulSoup
-from libs.bs4.builder import _html5lib as html5lib
 
 FIMF_API = "https://www.fimfiction.net/api/story.php?story={0}"
 FIMF_CHAPTERDL = "https://www.fimfiction.net/download_chapter.php?chapter={0}"
@@ -70,23 +70,24 @@ TEX_PREAMBLE_2 = \
 """
 
 
+def usage():
+    stderr.write("Usage: {0} <storyID>\n".format(os.path.basename(__file__)))
+
+
 def main():
     if len(sys.argv) != 2:
         usage()
+        return 1
 
     try:
         story_id = int(sys.argv[1])
     except ValueError:
         usage()
+        return 1
 
     story_url = FIMF_API.format(story_id)
 
-    try:
-        story = json.loads(urllib2.urlopen(urllib2.Request(story_url, headers={"User-Agent": USER_AGENT})).read())[
-            "story"]
-    except:
-        stderr.write("Invalid story ID.\n")
-        exit(1)
+    story = json.loads(urllib2.urlopen(urllib2.Request(story_url, headers={"User-Agent": USER_AGENT})).read())["story"]
 
     print "Story URL: {0}".format(story["url"])
     print "Story: {0} - {1}".format(story["title"], story["author"]["name"])
@@ -105,11 +106,6 @@ def main():
 
     file_name = write_latex(story, chapter_includes)
     print "Output written to {0}".format(file_name)
-
-
-def usage():
-    stderr.write("Usage: {0} <storyID>\n".format(os.path.basename(__file__)))
-    exit(1)
 
 
 def write_latex(story, chapter_includes):
@@ -185,6 +181,9 @@ def write_tag(f, tag):
 
 
 def write_chapter_html(num, chapter):
+    from libs.bs4 import BeautifulSoup as BeautifulSoup
+    from libs.bs4.builder import _html5lib as html5lib
+
     safe_title = re.sub("[^0-9a-zA-Z]+", "_", chapter["title"].lower())
     file_name = "{0:03d}-{1}.tex".format(num, safe_title)
 
