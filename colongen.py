@@ -1,24 +1,55 @@
 #!/usr/bin/env python
-import urllib2, json, re, sys, HTMLParser
+import urllib2, json, re, sys, os, inspect
 
-STORY_ID=25966
+from sys import stderr as stderr
+from sys import stdout as stdout
 
-FIMF_API="https://www.fimfiction.net/api/story.php?story={0}"
-FIMF_CHAPTERDL="https://www.fimfiction.net/download_chapter.php?chapter={0}"
-FIMF_CHAPTERDL_HTML="https://www.fimfiction.net/download_chapter.php?chapter={0}&html"
+# realpath() will make your script run, even if you symlink it :)
+cmd_folder = os.path.realpath(os.path.abspath(os.path.split(inspect.getfile(inspect.currentframe()))[0]))
+if cmd_folder not in sys.path:
+    sys.path.insert(0, cmd_folder)
 
-USER_AGENT="Mozilla/5.0"
+# use this if you want to include modules from a subfolder
+cmd_subfolder = os.path.realpath(
+    os.path.abspath(os.path.join(os.path.split(inspect.getfile(inspect.currentframe()))[0], "libs")))
+if cmd_subfolder not in sys.path:
+    sys.path.insert(0, cmd_subfolder)
 
-TEX_PREAMBLE_1=\
-"""\\documentclass[a4paper,12pt]{memoir}
+import codecs
+
+from libs.bs4 import BeautifulSoup as BeautifulSoup
+from libs.bs4.builder import _html5lib as html5lib
+
+FIMF_API = "https://www.fimfiction.net/api/story.php?story={0}"
+FIMF_CHAPTERDL = "https://www.fimfiction.net/download_chapter.php?chapter={0}"
+FIMF_CHAPTERDL_HTML = "https://www.fimfiction.net/download_chapter.php?chapter={0}&html"
+
+USER_AGENT = "Mozilla/5.0"
+
+TEX_PREAMBLE_1 = \
+    u"""\\documentclass[a4paper,12pt]{memoir}
+\\usepackage{ifxetex}
+\\RequireXeTeX
+
 \\usepackage[top=1in, bottom=1in, left=1in, right=1in]{geometry}
 \\usepackage[USenglish]{babel}
 
-\\usepackage[T1]{fontenc}
-\\usepackage[ansinew,utf8]{inputenc}
-\\usepackage{lmodern}
+\\usepackage{fontspec}
+\\setmainfont{Garamond}
 
-% Many keks
+% Convert non-breaking spaces into normal spaces
+\\usepackage{newunicodechar}
+\\newunicodechar{\u00a0}{ }
+
+\\usepackage[linktoc=all]{hyperref}
+\\hypersetup{
+    colorlinks,
+    citecolor=black,
+    filecolor=black,
+    linkcolor=black,
+    urlcolor=black
+}
+
 \\chapterstyle{dash}
 
 % Account for > 100 chapters and add ............ in the TOC
@@ -26,8 +57,8 @@ TEX_PREAMBLE_1=\
 \\cftsetindents{chapter}{1em}{3em}
 """
 
-TEX_PREAMBLE_2=\
-"""\\makeevenhead{headings}{\\thepage}{\\scshape\\fimfAuthor}{}
+TEX_PREAMBLE_2 = \
+    u"""\\makeevenhead{headings}{\\thepage}{\\scshape\\fimfAuthor}{}
 \\makeoddhead{headings}{}{\\scshape\\fimfTitle}{\\thepage}
 
 \\makeevenfoot{plain}{}{}{}
@@ -40,140 +71,59 @@ TEX_PREAMBLE_2=\
 
 
 def main():
+    if len(sys.argv) != 2:
+        usage()
 
-    story_url=FIMF_API.format(STORY_ID)
-    story = json.loads(urllib2.urlopen(urllib2.Request(story_url, headers={"User-Agent": USER_AGENT})).read())["story"]
+    try:
+        story_id = int(sys.argv[1])
+    except ValueError:
+        usage()
+
+    story_url = FIMF_API.format(story_id)
+
+    try:
+        story = json.loads(urllib2.urlopen(urllib2.Request(story_url, headers={"User-Agent": USER_AGENT})).read())[
+            "story"]
+    except:
+        stderr.write("Invalid story ID.\n")
+        exit(1)
 
     print "Story URL: {0}".format(story["url"])
     print "Story: {0} - {1}".format(story["title"], story["author"]["name"])
 
-    chapterIncludes=[]
+    chapter_includes = []
     chapters = story["chapters"]
     for i in range(0, len(chapters)):
         chap = chapters[i]
 
-        sys.stdout.write("  Chapter {0}: {1}...".format(i+1, chap["title"]))
-        fileName=write_chapter_html(i+1, chap)
-        sys.stdout.write("{0}\n".format(fileName))
+        stdout.write("  Chapter {0}: {1}...".format(i + 1, chap["title"]))
+        file_name = write_chapter_html(i + 1, chap)
+        # file_name = write_chapter_txt(i + 1, chap)
+        stdout.write("{0}\n".format(file_name))
 
-        chapterIncludes.append(fileName)
+        chapter_includes.append(file_name)
 
-    fileName = write_latex(story, chapterIncludes)
-    print "Output written to {0}".format(fileName)
-
-
-class FimFictionHTMLParser(HTMLParser.HTMLParser):
-
-    def __init__(self, f):
-        HTMLParser.HTMLParser.__init__(self)
-        self.f = f
-
-        # 0 = Started
-        # 1 = Found initial <hr/>
-        # 2 = Found <a> bookmark
-        # 3 = Found title <h3>
-        # 4 = Found closing body
-
-        self.startState = 0
-
-        self.bold = False
-        self.italics = False
-
-    def handle_starttag(self, tag, attrs):
-        if self.startState != 3:
-            return
-
-        if tag in ["b", "strong"]:
-            self.bold = True
-        elif tag in ["i", "em"]:
-            self.italics = True
-        elif tag in ["p"]:
-            self.f.write("\n\n")
-
-        #print "==> {0}".format(tag)
+    file_name = write_latex(story, chapter_includes)
+    print "Output written to {0}".format(file_name)
 
 
-    def handle_endtag(self, tag):
-        if(self.startState == 0):
-            if tag == "hr":
-                self.startState = 1
-        elif self.startState == 1:
-            if tag == "a":
-                self.startState = 2
-            else:
-                raise Exception("Invalid HTML Format")
-        elif self.startState == 2:
-            if tag == "h3":
-                self.startState = 3
-            else:
-                raise Exception("Invalid HTML Format")
-
-        elif self.startState == 3:
-            if tag == "body":
-                self.startState = 4
-            else:
-
-                if tag in ["b", "strong"]:
-                    self.bold = False
-                elif tag in ["i", "em"]:
-                    self.italics = False
-
-                #print "<== {0}".format(tag)
-        elif self.startState == 4:
-            pass
+def usage():
+    stderr.write("Usage: {0} <storyID>\n".format(os.path.basename(__file__)))
+    exit(1)
 
 
-    def handle_data(self, data):
-        if self.startState != 3:
-            return
+def write_latex(story, chapter_includes):
+    safe_title = re.sub("[^0-9a-zA-Z]+", "_", story["title"].lower())
 
-        if self.bold:
-            self.f.write("\\textbf{")
-
-        if self.italics:
-            self.f.write("\\textit{")
-
-        self.f.write(tex_escape(data))
-
-        if self.italics:
-            self.f.write("}")
-
-        if self.bold:
-            self.f.write("}")
-
-        #print data
-
-
-def write_chapter_html(num, chapter):
-    safeTitle=re.sub("[^0-9a-zA-Z]+", "_", chapter["title"].lower())
-    fileName = "{0:03d}-{1}.tex".format(num, safeTitle)
-
-    chapter_url=FIMF_CHAPTERDL_HTML.format(chapter["id"])
-
-    #print chapter_url
-    chapterHtml = urllib2.urlopen(urllib2.Request(chapter_url, headers={"User-Agent": USER_AGENT})).read()
-
-
-    with open(fileName, "wb") as f:
-
-        f.write("\\chapter{{{0}}}\n\n".format(tex_escape(chapter["title"])))
-
-        parser = FimFictionHTMLParser(f)
-        parser.feed(chapterHtml)
-
-    return fileName[:-4]
-
-def write_latex(story, chapterIncludes):
-    safeTitle=re.sub("[^0-9a-zA-Z]+", "_", story["title"].lower())
-
-    fileName = "{0}.tex".format(safeTitle)
-    with open(fileName, "wb") as f:
+    file_name = "{0}.tex".format(safe_title)
+    with codecs.open(file_name, "wb", encoding="utf-8") as f:
         f.write(TEX_PREAMBLE_1)
         f.write("\n")
 
         f.write("\\newcommand{{\\fimfTitle}}{{{0}}}\n".format(story["title"]))
         f.write("\\newcommand{{\\fimfAuthor}}{{{0}}}\n".format(story["author"]["name"]))
         f.write("\\newcommand{{\\fimfUrl}}{{{0}}}\n".format(story["url"]))
+        f.write("\\newcommand{{\\fimfStoryID}}{{{0}}}\n".format(story["id"]))
         f.write("\n")
 
         f.write(TEX_PREAMBLE_2)
@@ -187,55 +137,111 @@ def write_latex(story, chapterIncludes):
         f.write("\t\\tableofcontents*\n")
         f.write("\t\\clearpage\n")
 
-        for chap in chapterIncludes:
+        for chap in chapter_includes:
             f.write("\t\\include{{{0}}}\n".format(chap))
 
         f.write("\n\\end{document}\n")
 
-    return fileName
+    return file_name
+
 
 def tex_escape(line):
-    return line.replace("&", "\\&").replace("_", "\_").replace("#", "\\#").replace("$", "\\$").replace("%", "\\%")
+    # For the love of all things holy, do the \\ excape first...
+    line = line.replace("\\", "textbackslash")
+    line = line.replace("&", "\\&")
+    line = line.replace("_", "\_")
+    line = line.replace("#", "\\#")
+    line = line.replace("$", "\\$")
+    line = line.replace("%", "\\%")
+    line = line.replace("{", "\\{")
+    line = line.replace("}", "\\}")
+    line = line.replace("~", "\\textasciitilde")
+    line = line.replace("^", "\\textasciicircum")
+
+    return line
+
+
+def write_tag(f, tag):
+    from libs.bs4 import NavigableString as NavigableString
+    from libs.bs4 import Tag as Tag
+
+    if tag.name in [u'b', u'strong']:
+        f.write("\\textbf{")
+    elif tag.name in [u'i', u'em']:
+        f.write("\\textit{")
+
+    for text in tag.contents:
+        if type(text) == NavigableString:
+            f.write(tex_escape(text))
+        elif type(text) == Tag:
+            write_tag(f, text)
+
+    if tag.name in [u'b', u'strong']:
+        f.write("}")
+    elif tag.name in [u'i', u'em']:
+        f.write("}")
+    elif tag.name in [u'p']:
+        f.write("\n\n")
+
+
+def write_chapter_html(num, chapter):
+    safe_title = re.sub("[^0-9a-zA-Z]+", "_", chapter["title"].lower())
+    file_name = "{0:03d}-{1}.tex".format(num, safe_title)
+
+    chapter_url = FIMF_CHAPTERDL_HTML.format(chapter["id"])
+
+    chapter_html = urllib2.urlopen(urllib2.Request(chapter_url, headers={"User-Agent": USER_AGENT})).read()
+
+    # Use BeautifulSoup to parse it. html5lib is used because we want valid HTML
+    bs = BeautifulSoup(chapter_html, ["html5lib"], html5lib.HTML5TreeBuilder())
+
+    with codecs.open(file_name, "wb", encoding="utf-8") as f:
+        f.write("\\chapter{{{0}}}\n\n".format(tex_escape(chapter["title"])))
+
+        for paragraph in bs.find_all("p"):
+            write_tag(f, paragraph)
+
+    return file_name[:-4]
+
 
 def write_chapter_txt(num, chapter):
-    safeTitle=re.sub("[^0-9a-zA-Z]+", "_", chapter["title"].lower())
-    fileName = "{0:03d}-{1}.tex".format(num, safeTitle)
+    safe_title = re.sub("[^0-9a-zA-Z]+", "_", chapter["title"].lower())
+    file_name = "{0:03d}-{1}.tex".format(num, safe_title)
 
-    chapter_url=FIMF_CHAPTERDL.format(chapter["id"])
+    chapter_url = FIMF_CHAPTERDL.format(chapter["id"])
 
-    #print chapter_url
-    chapterTxt = urllib2.urlopen(urllib2.Request(chapter_url, headers={"User-Agent": USER_AGENT})).read()
-    with open(fileName, "wb") as f:
+    chapter_txt = urllib2.urlopen(urllib2.Request(chapter_url, headers={"User-Agent": USER_AGENT})).read()
+    with open(file_name, "wb") as f:
 
         f.write("\\chapter{{{0}}}\n\n".format(tex_escape(chapter["title"])))
-        prevLine = ""
+        prev_line = ""
         i = 0
-        for line in chapterTxt.split('\n'):
+        for line in chapter_txt.split('\n'):
             line = line.strip()
-            if(line.startswith("//")):
+            if line.startswith("//"):
                 continue
 
             kek = 0
-            #print "Line = \"{0}\", prevLine = \"{1}\"".format(line, prevLine)
-            if(line == ""):
-                if(prevLine == ""):
+            if line == "":
+                if prev_line == "":
                     continue
 
                 line = "\n"
                 kek = 1
 
             line = tex_escape(line)
-            if(kek == 1):
-                prevLine = ""
+            if kek == 1:
+                prev_line = ""
             else:
-                prevLine = line
+                prev_line = line
 
             f.write(line)
             f.write('\n')
 
             i += 1
 
-    return fileName[:-4]
+    return file_name[:-4]
 
-if(__name__ == "__main__"):
+
+if __name__ == "__main__":
     exit(main())
