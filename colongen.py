@@ -69,6 +69,25 @@ TEX_PREAMBLE_2 = \
 \\date{}
 """
 
+TEX_BACKTITLE = \
+    u"""{\\setlength{\\parindent}{0cm}
+
+This is a work of fiction. All of the characters, organisation, and events portrayed in this work are either products of the author's imagination or are used fictitiously.
+\\\\
+
+\MakeUppercase{\\fimfTitle}, by \MakeUppercase{\\fimfAuthor}
+\\\\
+
+My Little Pony: Friendship is Magic\\textsuperscript{\\textregistered} is a registered trademark of Hasbro, Inc.
+\\\\
+
+The author is not affiliated with Hasbro.
+\\\\
+
+Original Story URL: \\url{\\fimfUrl}
+\\\\
+}
+"""
 
 def usage():
     stderr.write("Usage: {0} <storyID>\n".format(os.path.basename(__file__)))
@@ -111,6 +130,9 @@ def main():
 def write_latex(story, chapter_includes):
     safe_title = re.sub("[^0-9a-zA-Z]+", "_", story["title"].lower())
 
+    with codecs.open("backtitle.tex", "wb", encoding="utf-8") as f:
+        f.write(TEX_BACKTITLE)
+
     file_name = "{0}.tex".format(safe_title)
     with codecs.open(file_name, "wb", encoding="utf-8") as f:
         f.write(TEX_PREAMBLE_1)
@@ -126,12 +148,21 @@ def write_latex(story, chapter_includes):
         f.write("\n")
 
         f.write("\n\\begin{document}\n\n")
+        f.write("\t\\pagestyle{empty}\n\n")
+
+        f.write("\t\\frontmatter\n\n")
 
         f.write("\t\\maketitle\n")
         f.write("\t\\clearpage\n\n")
 
+        f.write("\t\\include{backtitle}\n")
+        f.write("\t\\clearpage\n\n")
+
         f.write("\t\\tableofcontents*\n")
-        f.write("\t\\clearpage\n")
+        f.write("\t\\clearpage\n\n")
+
+        f.write("\t\\pagestyle{headings}\n")
+        f.write("\t\\mainmatter\n\n")
 
         for chap in chapter_includes:
             f.write("\t\\include{{{0}}}\n".format(chap))
