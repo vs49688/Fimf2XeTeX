@@ -58,8 +58,8 @@ TEX_PREAMBLE_1 = \
 """
 
 TEX_PREAMBLE_2 = \
-    u"""\\makeevenhead{headings}{\\thepage}{\\scshape\\fimfAuthor}{}
-\\makeoddhead{headings}{}{\\scshape\\fimfTitle}{\\thepage}
+    u"""\\makeevenhead{headings}{\\thepage}{\\MakeUppercase{\\fimfAuthor}}{}
+\\makeoddhead{headings}{}{\\MakeUppercase{\\fimfTitle}}{\\thepage}
 
 \\makeevenfoot{plain}{}{}{}
 \\makeoddfoot{plain}{}{}{}
