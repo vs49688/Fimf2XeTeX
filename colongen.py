@@ -143,7 +143,7 @@ def write_latex(story, chapter_includes):
 
 def tex_escape(line):
     # For the love of all things holy, do the \\ excape first...
-    line = line.replace("\\", "\\textbackslash")
+    line = line.replace("\\", "\\textbackslash ")
     line = line.replace("&", "\\&")
     line = line.replace("_", "\_")
     line = line.replace("#", "\\#")
@@ -151,8 +151,8 @@ def tex_escape(line):
     line = line.replace("%", "\\%")
     line = line.replace("{", "\\{")
     line = line.replace("}", "\\}")
-    line = line.replace("~", "\\textasciitilde")
-    line = line.replace("^", "\\textasciicircum")
+    line = line.replace(u"~", u"\\textasciitilde ")
+    line = line.replace(u"^", u"\\textasciicircum ")
 
     return line
 
@@ -165,6 +165,8 @@ def write_tag(f, tag):
         f.write("\\textbf{")
     elif tag.name in [u'i', u'em']:
         f.write("\\textit{")
+    elif tag.name in [u"center"]:
+        f.write("\n\\begin{center}\n")
 
     for text in tag.contents:
         if type(text) == NavigableString:
@@ -176,6 +178,8 @@ def write_tag(f, tag):
         f.write("}")
     elif tag.name in [u'i', u'em']:
         f.write("}")
+    elif tag.name in [u"center"]:
+        f.write("\n\\end{center}\n")
     elif tag.name in [u'p']:
         f.write("\n\n")
 
@@ -197,7 +201,8 @@ def write_chapter_html(num, chapter):
     with codecs.open(file_name, "wb", encoding="utf-8") as f:
         f.write("\\chapter{{{0}}}\n\n".format(tex_escape(chapter["title"])))
 
-        for paragraph in bs.find_all("p"):
+
+        for paragraph in bs.find_all(["p", "center"]):
             write_tag(f, paragraph)
 
     return file_name[:-4]
