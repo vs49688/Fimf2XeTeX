@@ -195,25 +195,26 @@ def write_tag(f, tag):
     from libs.bs4 import NavigableString as NavigableString
     from libs.bs4 import Tag as Tag
 
+    if type(tag) == NavigableString:
+        f.write(tex_escape(tag))
+        return
+
     if tag.name in [u'b', u'strong']:
-        #f.write("\\textbf{")
-        f.write("{\\bfseries\n")
+        # f.write("\\textbf{")
+        f.write("{\\bfseries ")
     elif tag.name in [u'i', u'em']:
-        #f.write("\\textit{")
-        f.write("{\\itshape\n")
+        # f.write("\\textit{")
+        f.write("{\\itshape ")
     elif tag.name in [u"center"]:
         f.write("\n\\begin{center}\n")
 
     for text in tag.contents:
-        if type(text) == NavigableString:
-            f.write(tex_escape(text))
-        elif type(text) == Tag:
-            write_tag(f, text)
+        write_tag(f, text)
 
     if tag.name in [u'b', u'strong']:
-        f.write("}\n")
+        f.write("}")
     elif tag.name in [u'i', u'em']:
-        f.write("}\n")
+        f.write("}")
     elif tag.name in [u"center"]:
         f.write("\n\\end{center}\n")
     elif tag.name in [u'p']:
@@ -237,8 +238,11 @@ def write_chapter_html(num, chapter):
     with codecs.open(file_name, "wb", encoding="utf-8") as f:
         f.write(u"\\chapter{{{0}}}\n\n".format(tex_escape(chapter["title"])))
 
-        for paragraph in bs.find_all(["p", "center"]):
-            write_tag(f, paragraph)
+        current_tag = bs.find("p")
+
+        while current_tag:
+            write_tag(f, current_tag)
+            current_tag = current_tag.next_sibling
 
     return file_name[:-4]
 
