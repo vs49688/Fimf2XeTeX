@@ -6,6 +6,7 @@ import sys
 import os
 import inspect
 import codecs
+import unicodedata
 
 from sys import stderr as stderr, stdout as stdout
 
@@ -89,6 +90,7 @@ Original Story URL: \\url{\\fimfUrl}
 }
 """
 
+
 def usage():
     stderr.write("Usage: {0} <storyID>\n".format(os.path.basename(__file__)))
 
@@ -116,7 +118,8 @@ def main():
     for i in range(0, len(chapters)):
         chap = chapters[i]
 
-        stdout.write("  Chapter {0}: {1}...".format(i + 1, chap["title"]))
+        chapName = ''.join((c for c in unicodedata.normalize('NFD', chap["title"]) if unicodedata.category(c) != 'Mn'))
+        stdout.write("  Chapter {0}: {1}...".format(i + 1, chapName))
         file_name = write_chapter_html(i + 1, chap)
         # file_name = write_chapter_txt(i + 1, chap)
         stdout.write("{0}\n".format(file_name))
@@ -193,9 +196,11 @@ def write_tag(f, tag):
     from libs.bs4 import Tag as Tag
 
     if tag.name in [u'b', u'strong']:
-        f.write("\\textbf{")
+        #f.write("\\textbf{")
+        f.write("{\\bfseries\n")
     elif tag.name in [u'i', u'em']:
-        f.write("\\textit{")
+        #f.write("\\textit{")
+        f.write("{\\itshape\n")
     elif tag.name in [u"center"]:
         f.write("\n\\begin{center}\n")
 
@@ -206,9 +211,9 @@ def write_tag(f, tag):
             write_tag(f, text)
 
     if tag.name in [u'b', u'strong']:
-        f.write("}")
+        f.write("}\n")
     elif tag.name in [u'i', u'em']:
-        f.write("}")
+        f.write("}\n")
     elif tag.name in [u"center"]:
         f.write("\n\\end{center}\n")
     elif tag.name in [u'p']:
@@ -230,8 +235,7 @@ def write_chapter_html(num, chapter):
     bs = BeautifulSoup(chapter_html, ["html5lib"], html5lib.HTML5TreeBuilder())
 
     with codecs.open(file_name, "wb", encoding="utf-8") as f:
-        f.write("\\chapter{{{0}}}\n\n".format(tex_escape(chapter["title"])))
-
+        f.write(u"\\chapter{{{0}}}\n\n".format(tex_escape(chapter["title"])))
 
         for paragraph in bs.find_all(["p", "center"]):
             write_tag(f, paragraph)
