@@ -181,7 +181,7 @@ def write_latex(story, chapter_includes):
 
 
 def tex_escape(line):
-    # For the love of all things holy, do the \\ excape first...
+    # For the love of all things holy, do the \\ escape first...
     line = line.replace("\\", "\\textbackslash ")
     line = line.replace("&", "\\&")
     line = line.replace("_", "\_")
@@ -255,6 +255,7 @@ def write_chapter_html(num, chapter):
     return file_name[:-4]
 
 
+# Not used anymore, but keeping around just in case.
 def write_chapter_txt(num, chapter):
     safe_title = re.sub("[^0-9a-zA-Z]+", "_", chapter["title"].lower())
     file_name = "{0:03d}-{1}.tex".format(num, safe_title)
