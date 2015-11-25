@@ -42,6 +42,7 @@ TEX_PREAMBLE_1 = \
 \\usepackage{newunicodechar}
 \\newunicodechar{\u00a0}{ }
 
+\\PassOptionsToPackage{hyphens}{url}
 \\usepackage[linktoc=all]{hyperref}
 \\hypersetup{
     colorlinks,
@@ -87,8 +88,10 @@ My Little Pony: Friendship is Magic\\textsuperscript{\\textregistered} is a regi
 The author is not affiliated with Hasbro.
 \\\\
 
-Original Story URL: \\url{\\fimfUrl}
+Original Story URL:
 \\\\
+\\url{\\fimfUrl}
+
 }
 """
 
