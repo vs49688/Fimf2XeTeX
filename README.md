@@ -13,7 +13,8 @@ FIMF2XeTeX will output a bunch of _*.tex_ filex in the current working directory
 $ xelatex master_build_file.tex
 ```
 
-```<storyID>``` may be extracted from URLs of the following form: ```https://www.fimfiction.net/story/<storyID>/```
+* ```<storyID>``` may be extracted from URLs of the following form: ```https://www.fimfiction.net/story/<storyID>/```
+* The above ```xelatex``` command will have to be run up to three times, but you should already know that if you know TeX/LaTeX/XeTeX.
 
 
 ### Installation
