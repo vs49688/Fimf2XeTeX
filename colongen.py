@@ -51,6 +51,8 @@ TEX_PREAMBLE_1 = \
     urlcolor=black
 }
 
+\\usepackage[autostyle]{csquotes}
+
 \\chapterstyle{dash}
 
 % Account for > 100 chapters and add ............ in the TOC
@@ -193,7 +195,6 @@ def tex_escape(line):
 
 def write_tag(f, tag):
     from libs.bs4 import NavigableString as NavigableString
-    from libs.bs4 import Tag as Tag
 
     if type(tag) == NavigableString:
         f.write(tex_escape(tag))
@@ -207,6 +208,8 @@ def write_tag(f, tag):
         f.write("{\\itshape ")
     elif tag.name in [u"center"]:
         f.write("\n\\begin{center}\n")
+    elif tag.name in [u"blockquote"]:
+        f.write("\n\\blockquote{")
 
     for text in tag.contents:
         write_tag(f, text)
@@ -217,6 +220,8 @@ def write_tag(f, tag):
         f.write("}")
     elif tag.name in [u"center"]:
         f.write("\n\\end{center}\n")
+    elif tag.name in [u"blockquote"]:
+        f.write("}\n")
     elif tag.name in [u'p']:
         f.write("\n\n")
 
