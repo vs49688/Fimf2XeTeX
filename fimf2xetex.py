@@ -123,7 +123,7 @@ def main():
     for i in range(0, len(chapters)):
         chap = chapters[i]
 
-        chapName = ''.join((c for c in unicodedata.normalize('NFD', chap["title"]) if unicodedata.category(c) != 'Mn'))
+        chapName = ''.join((c for c in unicodedata.normalize('NFD', chap["title"]) if unicodedata.category(c) != 'Mn')).replace(u"\u2018", "`").replace(u"\u2019", "'")
         stdout.write("  Chapter {0}: {1}...".format(i + 1, chapName))
         file_name = write_chapter_html(i + 1, chap)
         # file_name = write_chapter_txt(i + 1, chap)
