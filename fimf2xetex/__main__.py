@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-import urllib2
 import json
 import re
 import sys
@@ -9,22 +8,18 @@ import codecs
 import unicodedata
 import imghdr
 
+if sys.hexversion >= 0x3000000:
+	import urllib.request as urllib2
+else:
+	import urllib2
+
 from sys import stderr as stderr, stdout as stdout
 
-# realpath() will make your script run, even if you symlink it :)
-cmd_folder = os.path.realpath(os.path.abspath(os.path.split(inspect.getfile(inspect.currentframe()))[0]))
-if cmd_folder not in sys.path:
-	sys.path.insert(0, cmd_folder)
-
-# use this if you want to include modules from a subfolder
-cmd_subfolder = os.path.realpath(
-	os.path.abspath(os.path.join(os.path.split(inspect.getfile(inspect.currentframe()))[0], "libs")))
-if cmd_subfolder not in sys.path:
-	sys.path.insert(0, cmd_subfolder)
-
 FIMF_API = "https://www.fimfiction.net/api/story.php?story={0}"
-FIMF_CHAPTERDL = "https://www.fimfiction.net/download_chapter.php?chapter={0}"
-FIMF_CHAPTERDL_HTML = "https://www.fimfiction.net/download_chapter.php?chapter={0}&html"
+#FIMF_CHAPTERDL = "https://www.fimfiction.net/download_chapter.php?chapter={0}"
+#FIMF_CHAPTERDL_HTML = "https://www.fimfiction.net/download_chapter.php?chapter={0}&html"
+FIMF_CHAPTERDL = "https://www.fimfiction.net/chapters/download/{0}/txt"
+FIMF_CHAPTERDL_HTML = "https://www.fimfiction.net/chapters/download/{0}/html"
 
 USER_AGENT = "Mozilla/5.0"
 
@@ -113,14 +108,14 @@ def main():
 	story_url = FIMF_API.format(story_id)
 
 	story = json.loads(urllib2.urlopen(urllib2.Request(story_url, headers={"User-Agent": USER_AGENT})).read())["story"]
-	print "Story URL: {0}".format(story["url"])
-	print "Story: {0} - {1}".format(story["title"], story["author"]["name"])
-	print "Story Image: {0}".format(story["full_image"])
+	print("Story URL: {0}".format(story["url"]))
+	print("Story: {0} - {1}".format(story["title"], story["author"]["name"]))
+	print("Story Image: {0}".format(story["full_image"]))
 
 	image_data = urllib2.urlopen(urllib2.Request(story["full_image"], headers={"User-Agent": USER_AGENT})).read()
 	ext = imghdr.what(None, image_data)
 	if ext == None:
-		print "Cover image is in invalid format"
+		print("Cover image is in invalid format")
 		return 1
 
 	cover_file = "coverimage." + ext
@@ -141,7 +136,7 @@ def main():
 		chapter_includes.append(file_name)
 
 	file_name = write_latex(story, cover_file, chapter_includes)
-	print "Output written to {0}".format(file_name)
+	print("Output written to {0}".format(file_name))
 
 
 def write_latex(story, cover_file, chapter_includes):
@@ -211,7 +206,7 @@ def tex_escape(line):
 
 
 def write_tag(f, tag):
-	from libs.bs4 import NavigableString as NavigableString
+	from bs4 import NavigableString as NavigableString
 
 	if type(tag) == NavigableString:
 		f.write(tex_escape(tag))
@@ -244,8 +239,8 @@ def write_tag(f, tag):
 
 
 def write_chapter_html(num, chapter):
-	from libs.bs4 import BeautifulSoup as BeautifulSoup
-	from libs.bs4.builder import _html5lib as html5lib
+	from bs4 import BeautifulSoup as BeautifulSoup
+	from bs4.builder import _html5lib as html5lib
 
 	safe_title = re.sub("[^0-9a-zA-Z]+", "_", chapter["title"].lower())
 	file_name = "{0:03d}-{1}.tex".format(num, safe_title)

@@ -7,3 +7,5 @@
 *.txt
 *.pyc
 /.idea/
+**/__pycache__/
+**/venv/
