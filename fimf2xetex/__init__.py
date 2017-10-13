@@ -16,8 +16,10 @@ import imghdr
 
 if sys.hexversion >= 0x3000000:
 	import urllib.request as urllib2
+	import urllib.parse as urlparse
 else:
 	import urllib2
+	from urllib2 import urlparse
 
 from sys import stderr as stderr, stdout as stdout
 
@@ -99,6 +101,21 @@ Original Story URL:\\\\
 def usage():
 	stderr.write("Usage: {0} <storyID>\n".format(os.path.basename(sys.argv[0])))
 
+def get_image(url, base_name = None):
+	if not base_name:
+		base_name = urlparse.urlsplit(url).path.split('/')[-1].split('.')[0]
+
+	image_data = urllib2.urlopen(urllib2.Request(url, headers={"User-Agent": USER_AGENT})).read()
+	ext = imghdr.what(None, image_data)
+	if ext == None:
+		print("Image is in invalid format")
+		return 1
+
+	cover_file = base_name + "." + ext
+	with open(cover_file, "wb") as f:
+		f.write(image_data)
+
+	return cover_file
 
 def main():
 	if len(sys.argv) != 2:
@@ -111,6 +128,8 @@ def main():
 		usage()
 		return 1
 
+	#story_id = 25966
+
 	story_url = FIMF_API.format(story_id)
 
 	story = json.loads(urllib2.urlopen(urllib2.Request(story_url, headers={"User-Agent": USER_AGENT})).read())["story"]
@@ -118,6 +137,8 @@ def main():
 	print("Story: {0} - {1}".format(story["title"], story["author"]["name"]))
 	print("Story Image: {0}".format(story["full_image"]))
 
+	cover_file = get_image(story["full_image"], "coverimage")
+	"""
 	image_data = urllib2.urlopen(urllib2.Request(story["full_image"], headers={"User-Agent": USER_AGENT})).read()
 	ext = imghdr.what(None, image_data)
 	if ext == None:
@@ -127,7 +148,7 @@ def main():
 	cover_file = "coverimage." + ext
 	with open(cover_file, "wb") as f:
 		f.write(image_data)
-
+	"""
 	chapter_includes = []
 	chapters = story["chapters"]
 	for i in range(0, len(chapters)):
@@ -218,7 +239,14 @@ def write_tag(f, tag):
 		f.write(tex_escape(tag))
 		return
 
-	if tag.name in [u'b', u'strong']:
+	if tag.name in [u'img']:
+		if "data-src" in tag.attrs:
+			imgurl = tag.attrs["data-src"]
+		else:
+			imgurl = tag.attrs["src"]
+		img = get_image(imgurl)
+		f.write("{\\includegraphics[width=\\textwidth,height=\\textheight-\\pagetotal,keepaspectratio]{" + tex_escape(img) + "}}")
+	elif tag.name in [u'b', u'strong']:
 		# f.write("\\textbf{")
 		f.write("{\\bfseries ")
 	elif tag.name in [u'i', u'em']:
