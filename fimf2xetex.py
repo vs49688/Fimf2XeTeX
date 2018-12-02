@@ -38,6 +38,7 @@ TEX_PREAMBLE_1 = \
 
 \\usepackage[USenglish]{babel}
 
+\\usepackage{graphicx}
 \\usepackage{fontspec}
 
 % Convert non-breaking spaces into normal spaces
@@ -152,6 +153,7 @@ def main():
 	chapter_includes = []
 	chapters = story["chapters"]
 	for i in range(0, len(chapters)):
+	#for i in range(43,44):
 		chap = chapters[i]
 
 		chapName = ''.join((c for c in unicodedata.normalize('NFD', chap["title"]) if unicodedata.category(c) != 'Mn')).replace(u"\u2018", "`").replace(u"\u2019", "'")
@@ -181,6 +183,9 @@ def write_latex(story, cover_file, chapter_includes):
 		f.write("\\newcommand{{\\fimfAuthor}}{{{0}}}\n".format(story["author"]["name"]))
 		f.write("\\newcommand{{\\fimfUrl}}{{{0}}}\n".format(story["url"]))
 		f.write("\\newcommand{{\\fimfStoryID}}{{{0}}}\n".format(story["id"]))
+		f.write("\n")
+
+		f.write("\\newcommand{\\novelbreak}{\\fancybreak{* * *}}\n")
 		f.write("\n")
 
 		f.write(TEX_PREAMBLE_2)
@@ -239,13 +244,15 @@ def write_tag(f, tag):
 		f.write(tex_escape(tag))
 		return
 
+	if tag.name in [u'hr']:
+		f.write("\\novelbreak\n\n")
 	if tag.name in [u'img']:
 		if "data-src" in tag.attrs:
 			imgurl = tag.attrs["data-src"]
 		else:
 			imgurl = tag.attrs["src"]
 		img = get_image(imgurl)
-		f.write("{\\includegraphics[width=\\textwidth,height=\\textheight-\\pagetotal,keepaspectratio]{" + tex_escape(img) + "}}")
+		f.write("\\begin{center}{\\includegraphics{" + tex_escape(img) + "}}\\end{center}")
 	elif tag.name in [u'b', u'strong']:
 		# f.write("\\textbf{")
 		f.write("{\\bfseries ")
@@ -289,8 +296,7 @@ def write_chapter_html(num, chapter):
 	with codecs.open(file_name, "wb", encoding="utf-8") as f:
 		f.write(u"\\chapter{{{0}}}\n\n".format(tex_escape(chapter["title"])))
 
-		current_tag = bs.find("p")
-
+		current_tag = bs.find("h3").next_sibling
 		while current_tag:
 			write_tag(f, current_tag)
 			current_tag = current_tag.next_sibling
